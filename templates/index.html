@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MirCrew Cinema</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --red: #e50914; --bg: #080808; --surface: #111;
+            --s2: #191919; --s3: #222; --border: #2c2c2c;
+            --text: #f0f0f0; --muted: #6e6e6e; --muted2: #999;
+            --gold: #f5c518; --green: #46d369; --blue: #3d9be9;
+            --radius: 7px; --cw: 188px;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden}
+        img{display:block}
+        a{text-decoration:none;color:inherit}
+
+        /* ── HEADER ── */
+        .hdr{
+            position:fixed;top:0;left:0;right:0;z-index:1000;
+            height:60px;background:rgba(8,8,8,.97);backdrop-filter:blur(16px);
+            border-bottom:1px solid var(--border);
+            display:flex;align-items:center;gap:18px;padding:0 4%;
+        }
+        .logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--red);flex-shrink:0}
+        .nav{display:flex;gap:3px;flex:1}
+        .nbtn{background:none;border:none;color:var(--muted2);font-family:'Inter',sans-serif;font-size:.82rem;font-weight:500;padding:5px 12px;border-radius:18px;cursor:pointer;transition:all .2s}
+        .nbtn:hover,.nbtn.active{color:var(--text);background:var(--s3)}
+        .hdr-r{display:flex;align-items:center;gap:8px;margin-left:auto}
+        .search{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:18px;width:200px;outline:none;font-size:.82rem;transition:border-color .2s}
+        .search:focus{border-color:#444}
+        .scanbtn{background:var(--red);border:none;color:#fff;font-family:'Inter',sans-serif;font-weight:700;font-size:.75rem;padding:6px 15px;border-radius:18px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .2s;white-space:nowrap}
+        .scanbtn:hover{background:#c0070f}
+        .scanbtn:disabled{background:#3a3a3a;cursor:not-allowed}
+        .spin{display:inline-block;animation:spin .7s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        /* ── TOAST ── */
+        .toast{
+            position:fixed;bottom:26px;right:26px;z-index:9999;
+            background:var(--s2);border:1px solid var(--border);
+            color:var(--text);padding:13px 20px;border-radius:var(--radius);
+            font-size:.875rem;transform:translateY(90px);opacity:0;
+            transition:all .35s cubic-bezier(.34,1.56,.64,1);pointer-events:none;
+            max-width:280px;line-height:1.4;
+        }
+        .toast.show{transform:translateY(0);opacity:1}
+        .toast.success{border-color:var(--green)}
+        .toast.error{border-color:var(--red)}
+
+        /* ── SCAN PROGRESS BAR ── */
+        .scanbar{
+            position:fixed;top:60px;left:0;right:0;z-index:999;
+            height:3px;background:transparent;
+        }
+        .scanbar-fill{
+            height:100%;background:linear-gradient(90deg,var(--red),#ff6b6b);
+            width:0%;transition:width .4s ease;
+        }
+        .scanbar.active .scanbar-fill{animation:scanprogress 4s ease-in-out infinite}
+        @keyframes scanprogress{0%{width:0%}50%{width:75%}100%{width:95%}}
+
+        /* ── LAYOUT ── */
+        .spacer{height:60px}
+        .page{display:none;padding:18px 4% 60px;animation:fadeUp .3s ease}
+        .page.active{display:block}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+        /* ── STATS BAR ── */
+        .statbar{display:flex;gap:0;margin:10px 0 20px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+        .stat{flex:1;padding:12px 16px;border-right:1px solid var(--border);background:var(--surface)}
+        .stat:last-child{border-right:none}
+        .stat-n{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:1px;line-height:1}
+        .stat-l{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+        /* ── SECTION ── */
+        .sblock{margin-top:28px}
+        .stitle{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1px;margin-bottom:11px;display:flex;align-items:center;gap:10px}
+        .stitle-badge{font-size:.65rem;font-family:'Inter',sans-serif;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:.5px}
+
+        /* ── ROW ── */
+        .rowbox{position:relative}
+        .rowtrack{display:flex;overflow-x:auto;gap:13px;padding:4px 2px 12px;scrollbar-width:none;scroll-behavior:smooth}
+        .rowtrack::-webkit-scrollbar{display:none}
+        .arw{
+            position:absolute;top:42%;transform:translateY(-50%);
+            width:36px;height:36px;border-radius:50%;
+            background:rgba(10,10,10,.95);border:1px solid var(--border);
+            color:#fff;font-size:1.1rem;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            z-index:10;transition:all .2s;opacity:0;
+        }
+        .rowbox:hover .arw{opacity:1}
+        .arw:hover{background:var(--red);border-color:var(--red)}
+        .arw-l{left:-15px}.arw-r{right:-15px}
+
+        /* ── FILTER BAR ── */
+        .fbar{display:flex;align-items:center;gap:7px;margin-bottom:16px;flex-wrap:wrap}
+        .flabel{font-size:.75rem;color:var(--muted);flex-shrink:0}
+        .chip{background:var(--s2);border:1px solid var(--border);color:var(--muted2);font-size:.75rem;font-weight:600;padding:4px 12px;border-radius:16px;cursor:pointer;transition:all .2s}
+        .chip:hover{border-color:#444;color:var(--text)}
+        .chip.active{background:var(--red);border-color:var(--red);color:#fff}
+        .chip.genre-chip{border-color:transparent;background:var(--s3)}
+        .chip.genre-chip.active{background:var(--blue);border-color:var(--blue)}
+        .fsep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+        .sortsel{background:var(--s2);border:1px solid var(--border);color:var(--text);font-size:.75rem;padding:4px 8px;border-radius:var(--radius);cursor:pointer;outline:none;margin-left:auto}
+
+        /* ── GRID ── */
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:16px}
+
+        /* ── CARD ── */
+        .card{background:var(--surface);border-radius:var(--radius);overflow:hidden;position:relative;transition:transform .22s,box-shadow .22s;flex-shrink:0;width:var(--cw)}
+        .grid .card{width:auto}
+        .card:hover{transform:translateY(-5px);box-shadow:0 18px 50px rgba(0,0,0,.8)}
+
+        /* Poster */
+        .cpw{position:relative;width:100%;aspect-ratio:2/3;background:var(--s2);overflow:hidden}
+        .cposter{width:100%;height:100%;object-fit:cover}
+
+        /* Placeholder poster */
+        .cph{
+            position:absolute;inset:0;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            background:linear-gradient(160deg,#1a1a2e 0%,#0f2744 60%,#0a1628 100%);
+            padding:14px;text-align:center;gap:7px;
+        }
+        .cph-icon{font-size:2.2rem;opacity:.4}
+        .cph-title{font-size:.76rem;font-weight:600;color:rgba(255,255,255,.6);line-height:1.3;word-break:break-word}
+        .cph-year{font-size:.66rem;color:rgba(255,255,255,.28)}
+
+        /* Hover overlay */
+        .card-overlay{
+            position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.2) 50%,transparent 100%);
+            opacity:0;transition:opacity .25s;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;
+        }
+        .card:hover .card-overlay{opacity:1}
+        .ov-generi{font-size:.68rem;color:rgba(255,255,255,.65);margin-bottom:5px;line-height:1.4}
+        .ov-overview{font-size:.7rem;color:rgba(255,255,255,.75);line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+        .cbadge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.88);border:1px solid var(--red);color:#fff;font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.4px;z-index:2}
+        .cbadge.b4k{border-color:var(--gold)!important;color:var(--gold)!important}
+
+        .cbody{padding:10px 11px 12px}
+        .ctitle{font-size:.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+        .cmeta{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted2);margin-bottom:9px;align-items:center;gap:4px}
+        .crating{color:var(--green);font-weight:700}
+        .crating.zero{color:var(--muted)}
+        .cgenres{font-size:.65rem;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+        .qsel{background:var(--s2);border:1px solid var(--border);color:var(--text);width:100%;padding:5px 7px;border-radius:4px;font-size:.7rem;cursor:pointer;margin-bottom:7px;outline:none}
+        .bplay{display:block;width:100%;text-align:center;background:var(--red);color:#fff;padding:7px;border-radius:4px;font-weight:700;font-size:.76rem;border:none;cursor:pointer;transition:background .2s;letter-spacing:.3px}
+        .bplay:hover{background:#c0070f}
+        .binactive{display:block;width:100%;text-align:center;background:var(--s3);color:var(--muted);padding:7px;border-radius:4px;font-size:.76rem;cursor:default;border:1px solid var(--border)}
+
+        /* ── PAGINATION ── */
+        .pagination{display:flex;justify-content:center;align-items:center;gap:5px;margin-top:32px;flex-wrap:wrap}
+        .pbtn{background:var(--s2);border:1px solid var(--border);color:var(--text);font-size:.8rem;padding:5px 12px;border-radius:var(--radius);cursor:pointer;transition:all .2s}
+        .pbtn:hover:not(:disabled){border-color:var(--red);color:var(--red)}
+        .pbtn.active{background:var(--red);border-color:var(--red);color:#fff}
+        .pbtn:disabled{opacity:.28;cursor:not-allowed}
+        .pinfo{font-size:.75rem;color:var(--muted);padding:0 5px}
+
+        .empty{text-align:center;color:var(--muted);padding:60px 0;font-size:.9rem;grid-column:1/-1}
+        .ccount{font-size:.75rem;color:var(--muted);margin-bottom:14px}
+
+        /* ── GENRE PILLS SCROLL ── */
+        .genre-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:4px}
+        .genre-scroll::-webkit-scrollbar{display:none}
+
+        /* ── TREND BADGE "IN CATALOGO" ── */
+        .in-catalog-badge{
+            position:absolute;bottom:8px;left:8px;z-index:3;
+            background:var(--green);color:#000;font-size:.58rem;font-weight:800;
+            padding:2px 7px;border-radius:3px;letter-spacing:.5px;
+        }
+    </style>
+</head>
+<body>
+
+{% macro draw_card(m, type, idx) %}
+{% set versions = m.versioni.keys() | list | sort(reverse=True) %}
+{% set badge = versions[0] if versions else '' %}
+{% set is4k = ('2160' in badge) or ('4K' in badge) %}
+{% set generi_str = (m.generi_tmdb or []) | join(', ') %}
+<div class="card" data-title="{{ m.nome | lower }}">
+    <div class="cpw">
+        {% if m.poster %}
+        <img src="{{ m.poster }}" class="cposter" loading="lazy"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="cph" style="display:none">
+            <div class="cph-icon">🎬</div>
+            <div class="cph-title">{{ m.nome }}</div>
+            <div class="cph-year">{{ m.data_uscita }}</div>
+        </div>
+        {% else %}
+        <div class="cph">
+            <div class="cph-icon">🎬</div>
+            <div class="cph-title">{{ m.nome }}</div>
+            <div class="cph-year">{{ m.data_uscita }}</div>
+        </div>
+        {% endif %}
+        <div class="card-overlay">
+            {% if generi_str %}<div class="ov-generi">{{ generi_str }}</div>{% endif %}
+            {% if m.overview %}<div class="ov-overview">{{ m.overview }}</div>{% endif %}
+        </div>
+        <div class="cbadge {{ 'b4k' if is4k else '' }}">{{ badge }}</div>
+    </div>
+    <div class="cbody">
+        <div class="ctitle" title="{{ m.nome }}">{{ m.nome }}</div>
+        <div class="cmeta">
+            {% if m.rating > 0 %}<span class="crating">★ {{ m.rating | round(1) }}</span>
+            {% else %}<span class="crating zero">★ N/D</span>{% endif %}
+            <span>{{ m.data_uscita }}</span>
+        </div>
+        {% if generi_str %}<div class="cgenres">{{ generi_str }}</div>{% endif %}
+        {% if versions | length > 1 %}
+        <select class="qsel" onchange="document.getElementById('play-{{ type }}-{{ idx }}').href=this.value">
+            {% for q in versions %}<option value="{{ m.versioni[q].url }}">{{ q }} — {{ m.versioni[q].dim }}</option>{% endfor %}
+        </select>
+        {% endif %}
+        <a id="play-{{ type }}-{{ idx }}" href="{{ m.versioni[versions[0]].url if versions else '#' }}" class="bplay" target="_blank">▶ APRI</a>
+    </div>
+</div>
+{% endmacro %}
+
+<!-- SCAN BAR -->
+<div class="scanbar" id="scanbar"><div class="scanbar-fill"></div></div>
+
+<header class="hdr">
+    <a href="#" onclick="showPage('home');return false" class="logo">MIRCREW</a>
+    <nav class="nav">
+        <button class="nbtn active" id="nav-home" onclick="showPage('home')">Home</button>
+        <button class="nbtn" id="nav-catalog" onclick="showPage('catalog')">Catalogo</button>
+        <button class="nbtn" id="nav-genres" onclick="showPage('genres')">Generi</button>
+        <button class="nbtn" id="nav-upcoming" onclick="showPage('upcoming')">Prossimamente</button>
+    </nav>
+    <div class="hdr-r">
+        <input type="text" id="searchInput" class="search" placeholder="🔍 Cerca..." oninput="handleSearch()">
+        <button class="scanbtn" id="scanBtn" onclick="startScan()">
+            <span id="scanIcon">↻</span> Aggiorna
+        </button>
+    </div>
+</header>
+<div class="spacer"></div>
+
+<!-- ══════ HOME ══════ -->
+<div id="page-home" class="page active">
+
+    <!-- Stats -->
+    <div class="statbar">
+        <div class="stat">
+            <div class="stat-n" style="color:var(--red)">{{ all_movies | length }}</div>
+            <div class="stat-l">Film nel catalogo</div>
+        </div>
+        <div class="stat">
+            {% set c=namespace(n=0) %}{% for m in all_movies %}{% if '4K 2160p' in m.versioni %}{% set c.n=c.n+1 %}{% endif %}{% endfor %}
+            <div class="stat-n" style="color:var(--gold)">{{ c.n }}</div>
+            <div class="stat-l">In 4K Ultra HD</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n" style="color:var(--green)">{{ all_movies | selectattr('rating') | selectattr('rating','greaterthan',0) | list | length }}</div>
+            <div class="stat-l">Con rating TMDB</div>
+        </div>
+        <div class="stat">
+            <div class="stat-n" style="color:var(--blue)">{{ all_genres | length }}</div>
+            <div class="stat-l">Generi disponibili</div>
+        </div>
+    </div>
+
+    <!-- Ultimi caricamenti -->
+    <div class="sblock">
+        <div class="stitle">✦ Ultimi Caricamenti</div>
+        <div class="rowbox" id="rb-rec">
+            <button class="arw arw-l" onclick="scrollRow('rb-rec',-1)">&#8249;</button>
+            <div class="rowtrack">{% for m in recenti[:30] %}{{ draw_card(m,'rec',loop.index) }}{% endfor %}</div>
+            <button class="arw arw-r" onclick="scrollRow('rb-rec',1)">&#8250;</button>
+        </div>
+    </div>
+
+    <!-- Uscite recenti (per data mondiale) -->
+    {% set byrelease = all_movies | sort(attribute='release_date_full', reverse=True) %}
+    {% set recent_release = [] %}
+    {% for m in byrelease %}{% if m.release_date_full and m.release_date_full > '2024' and m.poster %}{% if recent_release.append(m) %}{% endif %}{% endif %}{% endfor %}
+    {% if recent_release %}
+    <div class="sblock">
+        <div class="stitle">📅 Più Recenti per Data di Uscita
+            <span class="stitle-badge" style="background:var(--blue);color:#fff">RELEASE DATE</span>
+        </div>
+        <div class="rowbox" id="rb-rel">
+            <button class="arw arw-l" onclick="scrollRow('rb-rel',-1)">&#8249;</button>
+            <div class="rowtrack">{% for m in recent_release[:20] %}{{ draw_card(m,'rel',loop.index) }}{% endfor %}</div>
+            <button class="arw arw-r" onclick="scrollRow('rb-rel',1)">&#8250;</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Meglio valutati -->
+    {% set toprated = all_movies | sort(attribute='rating',reverse=True) %}
+    {% set toplist = [] %}
+    {% for m in toprated %}{% if m.rating > 6 and m.poster %}{% if toplist.append(m) %}{% endif %}{% endif %}{% endfor %}
+    {% if toplist %}
+    <div class="sblock">
+        <div class="stitle">⭐ Meglio Valutati</div>
+        <div class="rowbox" id="rb-top">
+            <button class="arw arw-l" onclick="scrollRow('rb-top',-1)">&#8249;</button>
+            <div class="rowtrack">{% for m in toplist[:20] %}{{ draw_card(m,'top',loop.index) }}{% endfor %}</div>
+            <button class="arw arw-r" onclick="scrollRow('rb-top',1)">&#8250;</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Trend TMDB — con indicatore "già disponibile" -->
+    {% if trending %}
+    {% set catalog_tmdb_ids = all_movies | map(attribute='tmdb_id') | list %}
+    <div class="sblock">
+        <div class="stitle">🔥 Trend della Settimana
+            <span class="stitle-badge" style="background:var(--s3);color:var(--muted2)">TMDB</span>
+        </div>
+        <div class="rowbox" id="rb-trend">
+            <button class="arw arw-l" onclick="scrollRow('rb-trend',-1)">&#8249;</button>
+            <div class="rowtrack">
+                {% for t in trending %}
+                {% set in_cat = t.id in catalog_tmdb_ids %}
+                {% set cat_movie = namespace(m=none) %}
+                {% for m in all_movies %}{% if m.tmdb_id == t.id %}{% set cat_movie.m = m %}{% endif %}{% endfor %}
+                <div class="card">
+                    <div class="cpw">
+                        {% if t.poster_path %}
+                        <img src="https://image.tmdb.org/t/p/w500{{ t.poster_path }}" class="cposter" loading="lazy"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="cph" style="display:none"><div class="cph-icon">🔥</div><div class="cph-title">{{ t.title }}</div></div>
+                        {% else %}
+                        <div class="cph"><div class="cph-icon">🔥</div><div class="cph-title">{{ t.title }}</div></div>
+                        {% endif %}
+                        <div class="cbadge">TREND</div>
+                        {% if in_cat and cat_movie.m %}<div class="in-catalog-badge">✓ DISPONIBILE</div>{% endif %}
+                    </div>
+                    <div class="cbody">
+                        <div class="ctitle" title="{{ t.title }}">{{ t.title }}</div>
+                        <div class="cmeta">
+                            <span class="crating">★ {{ t.vote_average | round(1) }}</span>
+                            <span>{{ t.release_date[:4] if t.release_date else 'N/D' }}</span>
+                        </div>
+                        {% if in_cat and cat_movie.m %}
+                            {% set versions = cat_movie.m.versioni.keys() | list | sort(reverse=True) %}
+                            <a href="{{ cat_movie.m.versioni[versions[0]].url }}" class="bplay" target="_blank">▶ APRI</a>
+                        {% else %}
+                            <span class="binactive">Non disponibile</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="arw arw-r" onclick="scrollRow('rb-trend',1)">&#8250;</button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ══════ CATALOGO ══════ -->
+<div id="page-catalog" class="page">
+    <div class="fbar">
+        <span class="flabel">Qualità:</span>
+        <button class="chip active" onclick="setFilter('quality','all',this)">Tutti</button>
+        <button class="chip" onclick="setFilter('quality','4K 2160p',this)">4K</button>
+        <button class="chip" onclick="setFilter('quality','1080p',this)">1080p</button>
+        <div class="fsep"></div>
+        <select class="sortsel" id="sortSelect" onchange="loadCatalog(1)">
+            <option value="recent">↓ Più recenti</option>
+            <option value="release">📅 Data di uscita</option>
+            <option value="rating">★ Rating</option>
+            <option value="az">A → Z</option>
+        </select>
+    </div>
+    <!-- Generi nel catalogo -->
+    <div class="genre-scroll" id="genreScroll">
+        <button class="chip genre-chip active" onclick="setFilter('genre','all',this)">Tutti i generi</button>
+        {% for g in all_genres %}
+        <button class="chip genre-chip" onclick="setFilter('genre','{{ g }}',this)">{{ g }}</button>
+        {% endfor %}
+    </div>
+    <div style="height:10px"></div>
+    <div class="ccount" id="catalogCount"></div>
+    <div id="catalog-grid" class="grid"></div>
+    <div id="catalog-pagination" class="pagination"></div>
+</div>
+
+<!-- ══════ GENERI ══════ -->
+<div id="page-genres" class="page">
+    <div id="genres-container"></div>
+</div>
+
+<!-- ══════ PROSSIMAMENTE ══════ -->
+<div id="page-upcoming" class="page">
+    <div class="stitle" style="margin-bottom:16px">🗓 Prossime Uscite al Cinema</div>
+    <div class="grid">
+        {% for u in upcoming %}
+        <div class="card">
+            <div class="cpw">
+                {% if u.poster_path %}
+                <img src="https://image.tmdb.org/t/p/w500{{ u.poster_path }}" class="cposter" loading="lazy"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="cph" style="display:none"><div class="cph-icon">📅</div><div class="cph-title">{{ u.title }}</div></div>
+                {% else %}
+                <div class="cph"><div class="cph-icon">📅</div><div class="cph-title">{{ u.title }}</div></div>
+                {% endif %}
+            </div>
+            <div class="cbody">
+                <div class="ctitle" title="{{ u.title }}">{{ u.title }}</div>
+                <div class="cmeta"><span style="color:var(--gold);font-size:.7rem">📅 {{ u.release_date }}</span></div>
+                <span class="binactive">In arrivo</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATO ──
+let curQuality = 'all', curGenre = 'all', curPage = 1, curSort = 'recent', searchQ = '';
+let scanPoll = null;
+
+// ── NAVIGAZIONE ──
+function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nbtn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.getElementById('nav-' + id).classList.add('active');
+    window.scrollTo(0, 0);
+    if (id === 'catalog') loadCatalog(1);
+    if (id === 'genres') loadGenresPage();
+}
+
+// ── FRECCE ──
+function scrollRow(boxId, dir) {
+    const track = document.querySelector('#' + boxId + ' .rowtrack');
+    if (track) track.scrollBy({ left: dir * track.clientWidth * 0.8, behavior: 'smooth' });
+}
+
+// ── FILTRI CATALOGO ──
+function setFilter(type, val, el) {
+    if (type === 'quality') {
+        curQuality = val;
+        document.querySelectorAll('.fbar .chip:not(.genre-chip)').forEach(c => c.classList.remove('active'));
+    } else {
+        curGenre = val;
+        document.querySelectorAll('.genre-chip').forEach(c => c.classList.remove('active'));
+    }
+    el.classList.add('active');
+    loadCatalog(1);
+}
+
+// ── RICERCA ──
+function handleSearch() {
+    searchQ = document.getElementById('searchInput').value.trim();
+    showPage('catalog');
+    loadCatalog(1);
+}
+
+// ── CARD HTML (catalogo dinamico) ──
+function buildCard(m, i) {
+    const versions = Object.keys(m.versioni || {}).sort().reverse();
+    const badge = versions[0] || '';
+    const is4k = badge.includes('2160') || badge.includes('4K');
+    const firstUrl = versions[0] ? m.versioni[versions[0]].url : '#';
+    const rating = parseFloat(m.rating || 0);
+    const generi = (m.generi_tmdb || []).join(', ');
+
+    const posterHtml = m.poster
+        ? `<img src="${m.poster}" class="cposter" loading="lazy"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+           <div class="cph" style="display:none">
+               <div class="cph-icon">🎬</div>
+               <div class="cph-title">${escHtml(m.nome)}</div>
+               <div class="cph-year">${m.data_uscita||''}</div>
+           </div>`
+        : `<div class="cph">
+               <div class="cph-icon">🎬</div>
+               <div class="cph-title">${escHtml(m.nome)}</div>
+               <div class="cph-year">${m.data_uscita||''}</div>
+           </div>`;
+
+    const ovHtml = (generi || m.overview)
+        ? `<div class="card-overlay">
+               ${generi ? `<div class="ov-generi">${generi}</div>` : ''}
+               ${m.overview ? `<div class="ov-overview">${escHtml(m.overview)}</div>` : ''}
+           </div>` : '';
+
+    const selectHtml = versions.length > 1
+        ? `<select class="qsel" onchange="document.getElementById('dc${i}').href=this.value">
+               ${versions.map(q => `<option value="${m.versioni[q].url}">${q} — ${m.versioni[q].dim}</option>`).join('')}
+           </select>` : '';
+
+    return `<div class="card">
+        <div class="cpw">
+            ${posterHtml}
+            ${ovHtml}
+            <div class="cbadge ${is4k?'b4k':''}">${badge}</div>
+        </div>
+        <div class="cbody">
+            <div class="ctitle" title="${escHtml(m.nome)}">${escHtml(m.nome)}</div>
+            <div class="cmeta">
+                ${rating > 0 ? `<span class="crating">★ ${rating.toFixed(1)}</span>` : '<span class="crating zero">★ N/D</span>'}
+                <span>${m.data_uscita||'N/D'}</span>
+            </div>
+            ${generi ? `<div class="cgenres">${generi}</div>` : ''}
+            ${selectHtml}
+            <a id="dc${i}" href="${firstUrl}" class="bplay" target="_blank">▶ APRI</a>
+        </div>
+    </div>`;
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── CARICA CATALOGO ──
+function loadCatalog(page) {
+    curPage = page;
+    curSort = document.getElementById('sortSelect').value;
+    const params = new URLSearchParams({quality:curQuality, genre:curGenre, sort:curSort, q:searchQ, page, per_page:24});
+    const grid = document.getElementById('catalog-grid');
+    grid.innerHTML = '<div class="empty">Caricamento...</div>';
+
+    fetch('/api/movies?' + params)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('catalogCount').textContent = `${data.total} film trovati`;
+            if (!data.movies.length) {
+                grid.innerHTML = '<div class="empty">Nessun film trovato.</div>';
+                document.getElementById('catalog-pagination').innerHTML = '';
+                return;
+            }
+            grid.innerHTML = data.movies.map((m, i) => buildCard(m, i)).join('');
+            buildPagination(data.page, data.pages);
+        })
+        .catch(() => { grid.innerHTML = '<div class="empty">Errore caricamento.</div>'; });
+}
+
+function buildPagination(cur, tot) {
+    const el = document.getElementById('catalog-pagination');
+    if (tot <= 1) { el.innerHTML = ''; return; }
+    let html = `<button class="pbtn" onclick="loadCatalog(${cur-1})" ${cur<=1?'disabled':''}>‹</button>`;
+    for (let p=1; p<=tot; p++) {
+        if (p===1||p===tot||(p>=cur-2&&p<=cur+2))
+            html += `<button class="pbtn ${p===cur?'active':''}" onclick="loadCatalog(${p})">${p}</button>`;
+        else if (p===cur-3||p===cur+3) html += `<span class="pinfo">…</span>`;
+    }
+    html += `<button class="pbtn" onclick="loadCatalog(${cur+1})" ${cur>=tot?'disabled':''}>›</button>`;
+    html += `<span class="pinfo">${cur}/${tot}</span>`;
+    el.innerHTML = html;
+}
+
+// ── PAGINA GENERI ──
+function loadGenresPage() {
+    const container = document.getElementById('genres-container');
+    container.innerHTML = '<div class="empty">Caricamento generi...</div>';
+
+    fetch('/api/genres')
+        .then(r => r.json())
+        .then(genres => {
+            if (!genres.length) {
+                container.innerHTML = '<div class="empty">Nessun genere disponibile.</div>';
+                return;
+            }
+            container.innerHTML = genres.map(g => `
+                <div class="sblock" id="genre-sec-${g.replace(/\s/g,'_')}">
+                    <div class="stitle" style="cursor:pointer" onclick="showGenreSection('${g}')">
+                        🎭 ${g}
+                        <span class="stitle-badge" style="background:var(--blue);color:#fff" id="gbadge-${g.replace(/\s/g,'_')}">…</span>
+                    </div>
+                    <div class="rowbox" id="rb-g-${g.replace(/\s/g,'_')}">
+                        <button class="arw arw-l" onclick="scrollRow('rb-g-${g.replace(/\s/g,'_')}',-1)">&#8249;</button>
+                        <div class="rowtrack" id="rt-g-${g.replace(/\s/g,'_')}">
+                            <div class="empty" style="padding:30px 0">Clicca il titolo per caricare</div>
+                        </div>
+                        <button class="arw arw-r" onclick="scrollRow('rb-g-${g.replace(/\s/g,'_')}',1)">&#8250;</button>
+                    </div>
+                </div>`).join('');
+        });
+}
+
+function showGenreSection(genre) {
+    const key = genre.replace(/\s/g, '_');
+    const track = document.getElementById('rt-g-' + key);
+    const badge = document.getElementById('gbadge-' + key);
+    if (!track) return;
+    track.innerHTML = '<div class="empty" style="padding:20px 0">Caricamento...</div>';
+
+    fetch(`/api/movies?genre=${encodeURIComponent(genre)}&per_page=50&page=1&sort=rating`)
+        .then(r => r.json())
+        .then(data => {
+            if (badge) badge.textContent = data.total + ' film';
+            if (!data.movies.length) {
+                track.innerHTML = '<div class="empty" style="padding:20px 0">Nessun film trovato.</div>';
+                return;
+            }
+            track.innerHTML = data.movies.map((m, i) => buildCard(m, `g_${key}_${i}`, i)).join('');
+        });
+}
+
+// ── SCAN ──
+function startScan() {
+    fetch('/api/scan', {method:'POST'})
+        .then(r => r.json())
+        .then(data => {
+            showToast(data.msg, data.ok ? '' : 'error');
+            if (data.ok) {
+                setScanUI(true);
+                startPoll();
+            }
+        })
+        .catch(() => showToast('Errore di rete.', 'error'));
+}
+
+function setScanUI(scanning) {
+    const btn = document.getElementById('scanBtn');
+    const icon = document.getElementById('scanIcon');
+    const bar = document.getElementById('scanbar');
+    btn.disabled = scanning;
+    icon.textContent = scanning ? '⟳' : '↻';
+    if (scanning) { icon.classList.add('spin'); bar.classList.add('active'); }
+    else { icon.classList.remove('spin'); bar.classList.remove('active'); }
+}
+
+function startPoll() {
+    if (scanPoll) clearInterval(scanPoll);
+    scanPoll = setInterval(() => {
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.scanning) {
+                    setScanUI(false);
+                    clearInterval(scanPoll);
+                    if (data.just_finished) {
+                        showToast('✅ Scan completato! Il catalogo è aggiornato.', 'success');
+                        // Ricarica i dati della pagina corrente senza refresh completo
+                        const activePage = document.querySelector('.page.active');
+                        if (activePage && activePage.id === 'page-catalog') loadCatalog(curPage);
+                        if (activePage && activePage.id === 'page-home') {
+                            // Ricarica stats dinamicamente se possibile
+                        }
+                    }
+                }
+            });
+    }, 2500);
+}
+
+// ── TOAST ──
+function showToast(msg, type='') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type + ' show';
+    setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// ── INIT ──
+fetch('/api/status').then(r => r.json()).then(data => {
+    if (data.scanning) { setScanUI(true); startPoll(); }
+}).catch(()=>{});
+</script>
+</body>
+</html>
